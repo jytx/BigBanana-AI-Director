@@ -4,11 +4,21 @@ import { pipeline } from 'node:stream/promises';
 
 const PORT = Number.parseInt(process.env.MEDIA_PROXY_PORT || process.env.PORT || '8787', 10);
 const HOST = process.env.MEDIA_PROXY_HOST || '0.0.0.0';
-const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.MEDIA_PROXY_TIMEOUT_MS || '120000', 10);
+const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.MEDIA_PROXY_TIMEOUT_MS || '300000', 10);
 const MAX_URL_LENGTH = Number.parseInt(process.env.MEDIA_PROXY_MAX_URL_LENGTH || '4096', 10);
 const CORS_ORIGIN = process.env.MEDIA_PROXY_CORS_ORIGIN || '*';
 
-const allowedHostSuffixes = (process.env.MEDIA_PROXY_ALLOWED_HOSTS || 'volces.com')
+// 默认放行的媒体存储域名后缀（3.4.1 扩充：火山引擎 / AWS / 阿里云 OSS / 官方站点）
+const DEFAULT_ALLOWED_HOSTS = [
+  'volces.com',
+  'amazonaws.com',
+  'amazonaws.com.cn',
+  'aliyuncs.com',
+  'aliyuncs.com.cn',
+  'tree456.com',
+].join(',');
+
+const allowedHostSuffixes = (process.env.MEDIA_PROXY_ALLOWED_HOSTS || DEFAULT_ALLOWED_HOSTS)
   .split(',')
   .map((value) => value.trim().toLowerCase())
   .filter(Boolean);

@@ -1,23 +1,27 @@
+# 恢复版 compose：对齐官方 3.4.1 形态（bigbanana-ai-director-* 命名 + cutos-api 服务），
+# 但改为本地构建（build:）而非拉取官方闭源镜像。
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: bigbanana-web
+    container_name: bigbanana-ai-director-web
     ports:
       - "3005:80"
     depends_on:
       - media-proxy
       - new-api-proxy
+      - cutos-api
     restart: unless-stopped
 
   media-proxy:
     build:
       context: .
       dockerfile: Dockerfile.media-proxy
-    container_name: bigbanana-media-proxy
+    container_name: bigbanana-ai-director-media-proxy
     environment:
       MEDIA_PROXY_PORT: "8787"
+      # 官方 3.4.1 镜像默认白名单已内置 6 个域名，此处显式收窄为火山引擎
       MEDIA_PROXY_ALLOWED_HOSTS: "volces.com"
       MEDIA_PROXY_ALLOWED_PROTOCOLS: "https"
       MEDIA_PROXY_TIMEOUT_MS: "120000"
@@ -31,11 +35,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.new-api-proxy
-    container_name: bigbanana-new-api-proxy
+    container_name: bigbanana-ai-director-new-api-proxy
     environment:
       NEW_API_PROXY_PORT: "8788"
       NEW_API_ALLOWED_HOSTS: ""
       NEW_API_ALLOW_PRIVATE_HOSTS: "false"
     expose:
       - "8788"
+    restart: unless-stopped
+
+  cutos-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.cutos-api
+    container_name: bigbanana-ai-director-cutos-api
+    environment:
+      CUTOS_API_PORT: "8789"
+      # 可选：服务端统一的 DashScope 密钥（字幕/配音接口兜底使用，未配置时由前端传入）
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+    expose:
+      - "8789"
     restart: unless-stopped

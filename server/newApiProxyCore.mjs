@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
+import { GATEWAY_PREFIX, createGatewayForwarder } from './newApiGateway.mjs';
 
 const SESSION_COOKIE_NAME = 'bigbanana_new_api_sid';
 const SESSION_TTL_SECONDS = Number.parseInt(process.env.NEW_API_PROXY_SESSION_TTL || '604800', 10);
@@ -8,6 +9,9 @@ const ALLOWED_HOST_SUFFIXES = String(process.env.NEW_API_ALLOWED_HOSTS || '')
   .split(',')
   .map((value) => value.trim().toLowerCase())
   .filter(Boolean);
+// 网关默认端点与超时（3.4.1 新增：antsk 透明网关）
+const DEFAULT_GATEWAY_ENDPOINT = process.env.NEW_API_PROXY_DEFAULT_ENDPOINT || 'https://api.antsk.cn';
+const DEFAULT_GATEWAY_TIMEOUT_MS = Number.parseInt(process.env.NEW_API_PROXY_TIMEOUT_MS || '900000', 10);
 
 const sessions = new Map();
 
@@ -478,12 +482,29 @@ const proxyAuthed = async (req, res, upstreamPath, options = {}) => {
 };
 
 
-export const createNewApiProxyHandler = () => {
+/**
+ * 创建 New API 代理处理器
+ * @param {object} [options] - 可选配置（3.4.1 新增）
+ * @param {string} [options.defaultGatewayEndpoint] - antsk 透明网关默认端点
+ * @param {number} [options.gatewayRequestTimeoutMs] - 网关请求超时毫秒数
+ * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, next?: () => void) => Promise<void>}
+ */
+export const createNewApiProxyHandler = (options = {}) => {
+  // 创建时即校验默认网关端点，非法配置快速失败
+  const gatewayEndpoint = validateEndpoint(options.defaultGatewayEndpoint || DEFAULT_GATEWAY_ENDPOINT);
+  const gatewayTimeoutMs = options.gatewayRequestTimeoutMs ?? DEFAULT_GATEWAY_TIMEOUT_MS;
+  const forwardToGateway = createGatewayForwarder({
+    endpoint: gatewayEndpoint,
+    timeoutMs: gatewayTimeoutMs,
+  });
+
   return async (req, res, next) => {
     const requestUrl = new URL(req.url || '/', 'http://localhost');
     const pathname = requestUrl.pathname;
 
-    if (!pathname.startsWith('/api/new-api')) {
+    const isNewApiPath = pathname.startsWith('/api/new-api');
+    const isGatewayPath = pathname.startsWith(GATEWAY_PREFIX);
+    if (!isNewApiPath && !isGatewayPath) {
       if (typeof next === 'function') {
         next();
         return;
@@ -496,6 +517,24 @@ export const createNewApiProxyHandler = () => {
     if (req.method === 'OPTIONS') {
       res.statusCode = 204;
       res.end();
+      return;
+    }
+
+    // antsk 透明网关：流式转发，不解析请求体
+    if (isGatewayPath) {
+      try {
+        await forwardToGateway(req, res, requestUrl);
+      } catch (error) {
+        if (res.headersSent || res.writableEnded) {
+          res.destroy(error instanceof Error ? error : undefined);
+          return;
+        }
+        json(res, 502, {
+          success: false,
+          message: error instanceof Error ? error.message : 'Gateway proxy failed',
+          data: null,
+        });
+      }
       return;
     }
 
@@ -562,6 +601,43 @@ export const createNewApiProxyHandler = () => {
         return;
       }
 
+      // ---- 3.4.1 新增：邀请返利 / 订阅偏好 / 签到 ----
+      if (pathname === '/api/new-api/aff' && req.method === 'GET') {
+        await proxyAuthed(req, res, '/api/user/aff');
+        return;
+      }
+
+      if (pathname === '/api/new-api/aff_transfer' && req.method === 'POST') {
+        await proxyAuthed(req, res, '/api/user/aff_transfer', { method: 'POST', body });
+        return;
+      }
+
+      if (pathname === '/api/new-api/subscription/self/preference' && req.method === 'PUT') {
+        await proxyAuthed(req, res, '/api/subscription/self/preference', { method: 'PUT', body });
+        return;
+      }
+
+      if (pathname === '/api/new-api/checkin' && req.method === 'GET') {
+        await proxyAuthed(
+          req,
+          res,
+          `/api/user/checkin${buildQueryString({ month: requestUrl.searchParams.get('month') })}`,
+        );
+        return;
+      }
+
+      if (pathname === '/api/new-api/checkin' && req.method === 'POST') {
+        const turnstile = body.turnstile || requestUrl.searchParams.get('turnstile');
+        await proxyAuthed(
+          req,
+          res,
+          `/api/user/checkin${buildQueryString({ turnstile })}`,
+          { method: 'POST' },
+        );
+        return;
+      }
+      // ---- 3.4.1 新增结束 ----
+
       if (pathname === '/api/new-api/amount' && req.method === 'POST') {
         await proxyAuthed(req, res, '/api/user/amount', { method: 'POST', body });
         return;
@@ -618,6 +694,13 @@ export const createNewApiProxyHandler = () => {
             status: body.status,
           },
         });
+        return;
+      }
+
+      // 3.4.1 新增：重新生成指定 token 的密钥
+      const tokenKeyMatch = pathname.match(/^\/api\/new-api\/tokens\/(\d+)\/key$/);
+      if (tokenKeyMatch && req.method === 'POST') {
+        await proxyAuthed(req, res, `/api/token/${tokenKeyMatch[1]}/key`, { method: 'POST' });
         return;
       }
 

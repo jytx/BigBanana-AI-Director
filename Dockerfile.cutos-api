@@ -1,0 +1,31 @@
+# ===== 构建阶段：安装全部依赖并生成混淆产物 =====
+FROM node:20-slim AS builder
+
+WORKDIR /app
+
+# 先拷贝依赖清单以利用 Docker 层缓存
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# 拷贝服务端源码与构建脚本，执行受保护构建（esbuild 打包 + 混淆）
+COPY server ./server
+COPY scripts/build-obfuscated-server.mjs ./scripts/build-obfuscated-server.mjs
+RUN node scripts/build-obfuscated-server.mjs
+
+# ===== 运行阶段：仅安装生产依赖 =====
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# 仅携带混淆产物；node_modules 作为兜底解析（ffmpeg-static 等原生包无法打包）
+COPY --from=builder /app/server/protected ./protected
+
+# 与官方镜像启动方式保持一致（node protected/cutos-api.cjs）
+ENV CUTOS_API_PORT=8789
+
+EXPOSE 8789
+
+CMD ["node", "protected/cutos-api.cjs"]

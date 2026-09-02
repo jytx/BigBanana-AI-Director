@@ -23,4 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 /.vs
-/docs
+
+# 服务端混淆产物（由 build:server:protected 生成，不入库）
+server/protected
+# KODE Agent 会话持久化目录
+.kode-bigbanana
