@@ -88,10 +88,21 @@ const createDevNewApiProxyPlugin = (): Plugin => ({
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    // CutOS 剪辑工作台的本地服务端（scripts/start-cutos-api.sh，默认 8789）
+    const cutosApiTarget = env.CUTOS_API_TARGET || 'http://localhost:8789';
+    // dev 与 preview 共用的 CutOS/剪映接口代理
+    const cutosProxy = {
+      '/api/cutos': { target: cutosApiTarget, changeOrigin: true },
+      '/api/jianying': { target: cutosApiTarget, changeOrigin: true },
+    };
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: cutosProxy,
+      },
+      preview: {
+        proxy: cutosProxy,
       },
       plugins: [react(), createDevMediaProxyPlugin(), createDevNewApiProxyPlugin()],
       define: {

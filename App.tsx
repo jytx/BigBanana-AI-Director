@@ -10,6 +10,7 @@ import Dashboard from './components/Dashboard';
 import ProjectOverview from './components/ProjectOverview';
 import CharacterLibraryPage from './components/CharacterLibrary';
 import NewApiConsole from './components/NewApiConsole';
+import CutosWorkbench from './components/cutos/CutosWorkbench';
 import Onboarding, { shouldShowOnboarding, resetOnboarding } from './components/Onboarding';
 import ModelConfigModal from './components/ModelConfig';
 import { ProjectState } from './types';
@@ -362,6 +363,7 @@ function AppRoutes() {
           </ProjectProvider>
         } />
         <Route path="/account" element={<NewApiConsole />} />
+        <Route path="/cutos" element={<CutosWorkbench />} />
       </Routes>
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} onQuickStart={() => setShowOnboarding(false)} currentApiKey={apiKey} onSaveApiKey={handleSaveApiKey} />}
       <ModelConfigModal isOpen={showModelConfig} onClose={() => setShowModelConfig(false)} />

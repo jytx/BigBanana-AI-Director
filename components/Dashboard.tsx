@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Package, Database, Settings, Sun, Moon, Film, ExternalLink, User, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Package, Database, Settings, Sun, Moon, Film, ExternalLink, User, BookOpen, Scissors } from 'lucide-react';
 import { SeriesProject, AssetLibraryItem, Character, Scene, Prop, ProjectState } from '../types';
 import { getAllSeriesProjects, createNewSeriesProject, saveSeriesProject, deleteSeriesProject, createNewSeries, saveSeries, createNewEpisode, saveEpisode, getAllAssetLibraryItems, deleteAssetFromLibrary, exportIndexedDBData } from '../services/storageService';
 import { useAlert } from './GlobalAlert';
@@ -237,6 +237,14 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
               >
                 <BookOpen className="w-4 h-4" />
                 <span className="font-medium text-xs tracking-widest uppercase">小说导入</span>
+              </button>
+              <button
+                onClick={() => navigate('/cutos')}
+                className="group flex items-center gap-2 px-5 py-3 border border-[var(--accent-border)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--accent-bg)] transition-colors"
+                title="AI 对话式视频剪辑工作台，可导出剪映草稿"
+              >
+                <Scissors className="w-4 h-4" />
+                <span className="font-medium text-xs tracking-widest uppercase">剪辑工作台</span>
               </button>
               <button
                 onClick={() => navigate('/account')}
