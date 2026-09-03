@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Package, Database, Settings, Sun, Moon, Film, ExternalLink, User } from 'lucide-react';
+import { Plus, Trash2, Loader2, Folder, ChevronRight, Calendar, AlertTriangle, X, HelpCircle, Cpu, Archive, Search, Users, MapPin, Package, Database, Settings, Sun, Moon, Film, ExternalLink, User, BookOpen } from 'lucide-react';
 import { SeriesProject, AssetLibraryItem, Character, Scene, Prop, ProjectState } from '../types';
 import { getAllSeriesProjects, createNewSeriesProject, saveSeriesProject, deleteSeriesProject, createNewSeries, saveSeries, createNewEpisode, saveEpisode, getAllAssetLibraryItems, deleteAssetFromLibrary, exportIndexedDBData } from '../services/storageService';
 import { useAlert } from './GlobalAlert';
@@ -13,6 +13,7 @@ import {
   globalBackupFileName,
 } from '../hooks/useBackupTransfer';
 import { DIRECTOR_HUB_URL } from '../constants/links';
+import NovelImportDialog from './novel/NovelImportDialog';
 
 interface Props {
   onOpenProject: (project: ProjectState) => void;
@@ -36,6 +37,7 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
   const [assetToUse, setAssetToUse] = useState<AssetLibraryItem | null>(null);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showNovelImport, setShowNovelImport] = useState(false);
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -229,6 +231,14 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
                 <span className="font-bold text-xs tracking-widest uppercase">新建项目</span>
               </button>
               <button
+                onClick={() => setShowNovelImport(true)}
+                className="group flex items-center gap-2 px-5 py-3 border border-[var(--accent-border)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--accent-bg)] transition-colors"
+                title="从小说正文自动拆分集数并生成草稿"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span className="font-medium text-xs tracking-widest uppercase">小说导入</span>
+              </button>
+              <button
                 onClick={() => navigate('/account')}
                 className="group flex items-center gap-2 px-5 py-3 border border-[var(--accent-border)] text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--accent-bg)] transition-colors"
                 title="打开账号中心"
@@ -335,9 +345,11 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
         )}
       </div>
 
-      {/* Group QR Modal */}
-      {showGroupQr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-base)]/70 p-6" onClick={() => setShowGroupQr(false)}>
+        {showNovelImport && <NovelImportDialog onClose={() => setShowNovelImport(false)} />}
+
+        {/* Group QR Modal */}
+        {showGroupQr && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-base)]/70 p-6" onClick={() => setShowGroupQr(false)}>
           <div
             className="relative w-full max-w-xl bg-[var(--bg-primary)] border border-[var(--border-primary)] p-6 md:p-8"
             onClick={(e) => e.stopPropagation()}
